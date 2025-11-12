@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Camera or Browse + Telegram</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
+
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    background: #f0f4f8;
+    font-family: 'Inter', sans-serif;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .container {
+    background: white;
+    padding: 40px 60px;
+    border-radius: 16px;
+    box-shadow: 0 12px 30px rgb(0 0 0 / 0.1);
+    text-align: center;
+    width: 320px;
+  }
+  
+  h1 {
+    font-weight: 700;
+    font-size: 1.8rem;
+    color: #222;
+    margin-bottom: 20px;
+  }
+
+  p {
+    color: #555;
+    font-weight: 500;
+    font-size: 1rem;
+    margin-bottom: 32px;
+  }
+
+  button {
+    width: 100%;
+    padding: 16px 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-bottom: 20px;
+    outline-offset: 4px;
+  }
+
+  #btnCamera {
+    background: #3b82f6;
+    box-shadow: 0 6px 12px rgb(59 130 246 / 0.4);
+  }
+
+  #btnCamera:hover {
+    background: #2563eb;
+  }
+
+  #btnCamera:focus {
+    outline: 3px solid #93c5fd;
+  }
+
+  #btnBrowse {
+    background: #10b981;
+    box-shadow: 0 6px 12px rgb(16 185 129 / 0.4);
+  }
+
+  #btnBrowse:hover {
+    background: #059669;
+  }
+
+  #btnBrowse:focus {
+    outline: 3px solid #6ee7b7;
+  }
+
+  #camera, #preview {
+    margin-top: 30px;
+    display: none;
+  }
+
+  video, img {
+    width: 300px;
+    height: 300px;
+    border-radius: 16px;
+    object-fit: cover;
+    box-shadow: 0 6px 12px rgb(0 0 0 / 0.1);
+  }
+
+  #btnCapture {
+    margin-top: 15px;
+    padding: 12px 32px;
+    font-weight: 600;
+    font-size: 1rem;
+    background-color: #ef4444;
+    border: none;
+    color: white;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  #btnCapture:hover {
+    background-color: #b91c1c;
+  }
+
+  #btnCapture:focus {
+    outline: 3px solid #fca5a5;
+  }
+  
+  #sendBtn {
+    margin-top: 20px;
+    width: 100%;
+    padding: 15px 0;
+    background-color: #2c3e50;
+    font-weight: 700;
+    font-size: 1.1rem;
+    border-radius: 12px;
+    color: white;
+    cursor: pointer;
+    border: none;
+  }
+  #sendBtn:disabled {
+    background-color: #999;
+    cursor: not-allowed;
+  }
+  
+  #downloadLink {
+    display: inline-block;
+    margin-top: 20px;
+    background: #2563eb;
+    color: white;
+    padding: 10px 24px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  #downloadLink:hover {
+    background: #1e40af;
+  }
+  
+  #status {
+    margin-top: 15px;
+    font-weight: 600;
+    color: #444;
+  }
+</style>
+</head>
+<body>
+  <div class="container">
+    <h1>Select an Option</h1>
+    <p>Please choose what you want to do</p>
+    <button id="btnCamera">Use Camera</button>
+    <button id="btnBrowse">Browse Your Data</button>
+
+    <div id="camera">
+      <video id="video" autoplay></video><br />
+      <button id="btnCapture">Capture Photo</button>
+    </div>
+
+    <div id="preview">
+      <h2>Preview</h2>
+      <img id="photo" alt="Captured Photo" />
+      <br />
+      <a id="downloadLink" href="" download="selfie.png" style="display:none;">Download Image</a>
+    </div>
+
+    <button id="sendBtn" disabled>Send Image to Telegram</button>
+    <div id="status"></div>
+    
+    <input type="file" id="fileInput" accept="image/*" style="display:none" />
+  </div>
+
+<script>
+const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';  // <-- Telegram bot token
+const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID_HERE';              // <-- Telegram chat id
+
+const btnCamera = document.getElementById('btnCamera');
+const btnBrowse = document.getElementById('btnBrowse');
+const cameraDiv = document.getElementById('camera');
+const previewDiv = document.getElementById('preview');
+const video = document.getElementById('video');
+const btnCapture = document.getElementById('btnCapture');
+const photo = document.getElementById('photo');
+const downloadLink = document.getElementById('downloadLink');
+const fileInput = document.getElementById('fileInput');
+const sendBtn = document.getElementById('sendBtn');
+const statusDiv = document.getElementById('status');
+
+let stream;
+let currentImageBlob = null;
+
+btnCamera.onclick = async () => {
+  btnCamera.style.display = 'none';
+  btnBrowse.style.display = 'none';
+  cameraDiv.style.display = 'block';
+  previewDiv.style.display = 'none';
+  sendBtn.disabled = true;
+  statusDiv.textContent = '';
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+    video.srcObject = stream;
+  } catch(err) {
+    alert('Camera access denied or unavailable.');
+    reset();
+  }
+};
+
+btnCapture.onclick = () => {
+  const canvas = document.createElement('canvas');
+  canvas.width = 300;
+  canvas.height = 300;
+  const ctx = canvas.getContext('2d');
+
+  let videoWidth = video.videoWidth;
+  let videoHeight = video.videoHeight;
+  let side = Math.min(videoWidth, videoHeight);
+  let sx = (videoWidth - side) / 2;
+  let sy = (videoHeight - side) / 2;
+
+  ctx.drawImage(video, sx, sy, side, side, 0, 0, 300, 300);
+
+  canvas.toBlob(blob => {
+    currentImageBlob = blob;
+    const url = URL.createObjectURL(blob);
+    photo.src = url;
+    downloadLink.href = url;
+    downloadLink.style.display = 'inline-block';
+    previewDiv.style.display = 'block';
+    sendBtn.disabled = false;
+  }, 'image/png');
+
+  if(stream) {
+    stream.getTracks().forEach(track => track.stop());
+  }
+  cameraDiv.style.display = 'none';
+};
+
+btnBrowse.onclick = () => {
+  fileInput.click();
+};
+
+fileInput.onchange = () => {
+  const file = fileInput.files[0];
+  if(file && file.type.startsWith('image/')) {
+    currentImageBlob = file;
+    const reader = new FileReader();
+    reader.onload = e => {
+      photo.src = e.target.result;
+      downloadLink.href = e.target.result;
+      downloadLink.style.display = 'inline-block';
+      previewDiv.style.display = 'block';
+      btnCamera.style.display = 'none';
+      btnBrowse.style.display = 'none';
+      sendBtn.disabled = false;
+      statusDiv.textContent = '';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    alert('Please select an image file.');
+  }
+};
+
+sendBtn.onclick = () => {
+  if (!currentImageBlob) return;
+
+  sendBtn.disabled = true;
+  statusDiv.textContent = 'Sending image to Telegram...';
+
+  const formData = new FormData();
+  formData.append('chat_id', TELEGRAM_CHAT_ID);
+  formData.append('photo', currentImageBlob, 'photo.png');
+
+  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(response => response.json())
+  .then(data => {
+    if(data.ok) {
+      statusDiv.textContent = 'Image sent successfully!';
+    } else {
+      statusDiv.textContent = 'Failed to send image: ' + data.description;
+    }
+    sendBtn.disabled = false;
+  })
+  .catch(error => {
+    statusDiv.textContent = 'Error sending image.';
+    sendBtn.disabled = false;
+    console.error(error);
+  });
+};
+
+function reset(){
+  btnCamera.style.display = 'inline-block';
+  btnBrowse.style.display = 'inline-block';
+  cameraDiv.style.display = 'none';
+  previewDiv.style.display = 'none';
+  sendBtn.disabled = true;
+  statusDiv.textContent = '';
+  currentImageBlob = null;
+}
+</script>
+</body>
+</html>
