@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Camera or Browse + Telegram</title>
+<title>Image Capture and Upload UI</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@500;700&display=swap');
 
@@ -114,49 +114,18 @@
     outline: 3px solid #fca5a5;
   }
   
-  #sendBtn {
-    margin-top: 20px;
-    width: 100%;
-    padding: 15px 0;
-    background-color: #2c3e50;
-    font-weight: 700;
-    font-size: 1.1rem;
-    border-radius: 12px;
-    color: white;
-    cursor: pointer;
-    border: none;
-  }
-  #sendBtn:disabled {
-    background-color: #999;
-    cursor: not-allowed;
-  }
-  
-  #downloadLink {
-    display: inline-block;
-    margin-top: 20px;
-    background: #2563eb;
-    color: white;
-    padding: 10px 24px;
-    border-radius: 12px;
-    text-decoration: none;
-    font-weight: 600;
-  }
-
-  #downloadLink:hover {
-    background: #1e40af;
-  }
-  
   #status {
-    margin-top: 15px;
+    margin-top: 18px;
     font-weight: 600;
     color: #444;
+    min-height: 20px;
   }
 </style>
 </head>
 <body>
   <div class="container">
     <h1>Select an Option</h1>
-    <p>Please choose what you want to do</p>
+    <p>Please capture image or browse your data</p>
     <button id="btnCamera">Use Camera</button>
     <button id="btnBrowse">Browse Your Data</button>
 
@@ -168,20 +137,14 @@
     <div id="preview">
       <h2>Preview</h2>
       <img id="photo" alt="Captured Photo" />
-      <br />
-      <a id="downloadLink" href="" download="selfie.png" style="display:none;">Download Image</a>
     </div>
 
-    <button id="sendBtn" disabled>Send Image to Telegram</button>
     <div id="status"></div>
     
     <input type="file" id="fileInput" accept="image/*" style="display:none" />
   </div>
 
 <script>
-const TELEGRAM_BOT_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN_HERE';  // <-- Telegram bot token
-const TELEGRAM_CHAT_ID = 'YOUR_CHAT_ID_HERE';              // <-- Telegram chat id
-
 const btnCamera = document.getElementById('btnCamera');
 const btnBrowse = document.getElementById('btnBrowse');
 const cameraDiv = document.getElementById('camera');
@@ -189,9 +152,7 @@ const previewDiv = document.getElementById('preview');
 const video = document.getElementById('video');
 const btnCapture = document.getElementById('btnCapture');
 const photo = document.getElementById('photo');
-const downloadLink = document.getElementById('downloadLink');
 const fileInput = document.getElementById('fileInput');
-const sendBtn = document.getElementById('sendBtn');
 const statusDiv = document.getElementById('status');
 
 let stream;
@@ -202,7 +163,6 @@ btnCamera.onclick = async () => {
   btnBrowse.style.display = 'none';
   cameraDiv.style.display = 'block';
   previewDiv.style.display = 'none';
-  sendBtn.disabled = true;
   statusDiv.textContent = '';
 
   try {
@@ -232,16 +192,23 @@ btnCapture.onclick = () => {
     currentImageBlob = blob;
     const url = URL.createObjectURL(blob);
     photo.src = url;
-    downloadLink.href = url;
-    downloadLink.style.display = 'inline-block';
     previewDiv.style.display = 'block';
-    sendBtn.disabled = false;
-  }, 'image/png');
+    statusDiv.textContent = 'Image captured. Uploading...';
 
-  if(stream) {
-    stream.getTracks().forEach(track => track.stop());
-  }
-  cameraDiv.style.display = 'none';
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+    }
+    cameraDiv.style.display = 'none';
+
+    // Call backend API to upload (simulate here)
+    uploadImageToBackend(blob).then(success => {
+      if(success) {
+        statusDiv.textContent = 'Image successfully uploaded!';
+      } else {
+        statusDiv.textContent = 'Upload failed. Please try again.';
+      }
+    });
+  }, 'image/png');
 };
 
 btnBrowse.onclick = () => {
@@ -255,48 +222,24 @@ fileInput.onchange = () => {
     const reader = new FileReader();
     reader.onload = e => {
       photo.src = e.target.result;
-      downloadLink.href = e.target.result;
-      downloadLink.style.display = 'inline-block';
       previewDiv.style.display = 'block';
-      btnCamera.style.display = 'none';
-      btnBrowse.style.display = 'none';
-      sendBtn.disabled = false;
-      statusDiv.textContent = '';
+      statusDiv.textContent = 'Uploading image...';
+
+      // Call backend API to upload (simulate here)
+      uploadImageToBackend(file).then(success => {
+        if(success) {
+          statusDiv.textContent = 'Image successfully uploaded!';
+        } else {
+          statusDiv.textContent = 'Upload failed. Please try again.';
+        }
+      });
     };
     reader.readAsDataURL(file);
+    btnCamera.style.display = 'none';
+    btnBrowse.style.display = 'none';
   } else {
     alert('Please select an image file.');
   }
-};
-
-sendBtn.onclick = () => {
-  if (!currentImageBlob) return;
-
-  sendBtn.disabled = true;
-  statusDiv.textContent = 'Sending image to Telegram...';
-
-  const formData = new FormData();
-  formData.append('chat_id', TELEGRAM_CHAT_ID);
-  formData.append('photo', currentImageBlob, 'photo.png');
-
-  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendPhoto`, {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(data => {
-    if(data.ok) {
-      statusDiv.textContent = 'Image sent successfully!';
-    } else {
-      statusDiv.textContent = 'Failed to send image: ' + data.description;
-    }
-    sendBtn.disabled = false;
-  })
-  .catch(error => {
-    statusDiv.textContent = 'Error sending image.';
-    sendBtn.disabled = false;
-    console.error(error);
-  });
 };
 
 function reset(){
@@ -304,9 +247,25 @@ function reset(){
   btnBrowse.style.display = 'inline-block';
   cameraDiv.style.display = 'none';
   previewDiv.style.display = 'none';
-  sendBtn.disabled = true;
   statusDiv.textContent = '';
   currentImageBlob = null;
+}
+
+// Simulated upload function
+async function uploadImageToBackend(imageBlob) {
+  try {
+    // यहां असली API कॉल जोड़ें, उदाहरण के लिए:
+    // const formData = new FormData();
+    // formData.append('image', imageBlob, 'photo.png');
+    // const res = await fetch('/upload-image-endpoint', { method: 'POST', body: formData });
+    // return res.ok;
+
+    // फिलहाल सिमुलेशन के लिए 2 सेकंड का डिले डालें:
+    await new Promise(r => setTimeout(r, 2000));
+    return true; // सफल अपलोड मानें
+  } catch(e) {
+    return false;
+  }
 }
 </script>
 </body>
